@@ -1,13 +1,18 @@
 import requests
 from bs4 import BeautifulSoup
 import sqlite3
-import time
+from notificador import enviar_telegram
 
 class Vigilante:
   def __init__(self):
     self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     self.lista_produtos = [
-      {"nome": "Lego MP4/40", "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654", "loja": "Mercado Livre"}
+      {
+        "nome": "Lego MP4/40",
+       "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654",
+       "loja": "Mercado Livre",
+       "meta_preco": 2000.00
+      }
     ]
   
   def salvar_no_banco(self, produto, valor, loja):
@@ -48,6 +53,10 @@ class Vigilante:
         preco = self.verificar_mercadolivre(item['url'])
       if preco:
         self.salvar_no_banco(item['nome'], preco, item['loja'])
+
+        if preco <= item['meta_preco']:
+          msg = f"🚨 PROMOÇÃO DETECTADA!\nProduto: {item['nome']}\nPreço Atual: R$ {preco}\nLink: {item['url']}"
+          enviar_telegram(msg)
       else:
         print("❌ Falha ao obter preço.")
 
