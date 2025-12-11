@@ -11,7 +11,7 @@ class Vigilante:
         "nome": "Lego MP4/40",
        "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654",
        "loja": "Mercado Livre",
-       "meta_preco": 2000.00
+       "meta_preco": 250.00
       }
     ]
   

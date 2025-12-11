@@ -1,5 +1,7 @@
 # 🦅 Vigilante de Preços
 
+[![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-api.onrender.com/docs)
+
 > Um robô de monitoramento de preços (ETL & Web Scraping) integrado com Telegram e API.
 
 O **Vigilante de Preços** é uma solução de Engenharia de Dados desenvolvida para monitorar oscilações de valores em grandes e-commerces (como Mercado Livre). O sistema coleta os dados automaticamente, armazena o histórico em banco de dados e notifica o usuário via Telegram quando o preço atinge o alvo desejado.
