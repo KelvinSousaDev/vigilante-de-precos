@@ -26,7 +26,13 @@ if dados:
   minimo = df['valor'].min()
   media = df['valor'].mean()
 
-  col1.metric("Preço Atual", f"R$ {atual:.2f}")
+  variacao = 0
+
+  if df['valor'].count() >= 2:
+    anterior = df['valor'].iloc[-2]
+    variacao = atual - anterior
+
+  col1.metric("Preço Atual", f"R$ {atual:.2f}", delta=f"{variacao:.2f}", delta_color="inverse")
   col2.metric("Preço Minimo", f"R$ {minimo:.2f}")
   col3.metric("Preço Médio", f"R$ {media:.2f}")
 
