@@ -9,15 +9,12 @@ class Vigilante:
   def __init__(self):
     self.headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Accept-Encoding": "gzip, deflate",
+        "Accept-Encoding": "gzip, deflate", 
+        "Referer": "https://www.google.com/",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1"
     }
     self.lista_produtos = [
       {
@@ -60,7 +57,12 @@ class Vigilante:
     try:
       resposta = requests.get(url, headers=self.headers)
       print(f"📡 Status HTTP: {resposta.status_code}")
+      print(f"🔗 URL Final: {resposta.url}")
+
       soup = BeautifulSoup(resposta.content, 'html.parser')
+
+      texto_limpo = soup.get_text()[:200].replace('\n', ' ')
+      print(f"📄 Início do Texto: {texto_limpo}")
       print(f"🔎 Título da página capturada: {soup.title.string if soup.title else 'Sem título'}")
       
       elemento_meta = soup.find("meta", itemprop="price")
