@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import sqlite3
 from notificador import enviar_telegram
+import os
+import psycopg2
 
 class Vigilante:
   def __init__(self):
@@ -15,12 +17,32 @@ class Vigilante:
       }
     ]
   
+
   def salvar_no_banco(self, produto, valor, loja):
-    conn = sqlite3.connect('precos.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO historico_precos(produto, valor, loja) VALUES(?, ?, ?)", (produto, valor, loja))
-    conn.commit()
-    conn.close()
+    DATABASE_URL = os.getenv("DATABASE_URL")
+
+    if DATABASE_URL:
+      conn = psycopg2.connect(DATABASE_URL)
+      cursor = conn.cursor()
+      cursor.execute('''
+        CREATE TABLE IF NOT EXISTS historico_precos (
+            id SERIAL PRIMARY KEY,
+            produto TEXT,
+            valor DECIMAL(10, 2),
+            loja TEXT,
+            data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      ''')
+      cursor.execute("INSERT INTO historico_precos(produto, valor, loja) VALUES(%s, %s, %s)", (produto, valor, loja))
+      conn.commit()
+      conn.close()
+    else:
+      conn = sqlite3.connect('precos.db')
+      cursor = conn.cursor()
+      cursor.execute("INSERT INTO historico_precos(produto, valor, loja) VALUES(?, ?, ?)", (produto, valor, loja))
+      conn.commit()
+      conn.close()
+
     print(f"💾 Salvo: {produto} - R$ {valor}")
 
   def verificar_mercadolivre(self, url):
