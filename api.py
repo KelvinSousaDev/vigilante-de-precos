@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 import sqlite3
+import os
+import psycopg2
 
 app = FastAPI()
 
@@ -9,11 +11,24 @@ async def index():
 
 @app.get("/historico")
 async def historico():
-  conn = sqlite3.connect('precos.db')
-  cursor = conn.cursor()
-  cursor.execute("SELECT * FROM historico_precos")
-  resultados = cursor.fetchall()
-  conn.close()
+  db_url = os.getenv("DATABASE_URL")
+  query_segura = "SELECT id, produto, valor, loja, data_hora FROM historico_precos"
+
+  resultados = []
+
+  if db_url:
+    conn = psycopg2.connect(db_url)
+    cursor = conn.cursor()
+    cursor.execute(query_segura)
+    resultados = cursor.fetchall()
+    conn.close()
+  else:
+    conn = sqlite3.connect('precos.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM historico_precos")
+    resultados = cursor.fetchall()
+    conn.close()
+
   dados_formatados = []
   for item in resultados:
     dados = {
