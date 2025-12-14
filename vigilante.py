@@ -4,6 +4,9 @@ from notificador import enviar_telegram
 import os
 import psycopg2
 from curl_cffi import requests as cffi_requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Vigilante:
   def __init__(self):
