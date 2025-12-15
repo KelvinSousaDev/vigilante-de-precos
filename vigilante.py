@@ -1,3 +1,4 @@
+import time
 from bs4 import BeautifulSoup
 import sqlite3
 from notificador import enviar_telegram
@@ -6,6 +7,7 @@ import psycopg2
 from curl_cffi import requests as cffi_requests
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 class Vigilante:
@@ -13,10 +15,22 @@ class Vigilante:
     self.headers = None
     self.lista_produtos = [
       {
-        "nome": "Lego MP4/40",
-       "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654",
-       "loja": "Mercado Livre",
-       "meta_preco": 250.00
+      "nome": "Lego MP4/40",
+      "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654",
+      "loja": "Mercado Livre",
+      "meta_preco": 250.00
+      },
+      {
+      "nome": "Café Baggio",
+      "url": "https://www.mercadolivre.com.br/cafe-gourmet-torradomoido-100-arabica-aromas-baggio-250gr-aroma-chocolate-com-avel/p/MLB19558358",
+      "loja": "Mercado Livre",
+      "meta_preco": 30.00
+      },
+      {
+      "nome": "Notebook ASUS TUF - RTX 3050",
+      "url": "https://www.mercadolivre.com.br/notebook-gamer-asus-tuf-gaming-a15-amd-ryzen-7-7435hs-31-ghz-rtx3050-16gb-ram-512gb-ssd-windows-11-home-tela-156-144hz-ips-fhd-graphite-black-fa506ncr-hn088w/p/MLB45998098",
+      "loja": "Mercado Livre",
+      "meta_preco": 4500.00
       }
     ]
   
@@ -96,6 +110,9 @@ class Vigilante:
           enviar_telegram(msg)
       else:
         print("❌ Falha ao obter preço.")
+      print("Aguardando...")
+      time.sleep(5)
+      
 
 if __name__ == "__main__":
     bot = Vigilante()
