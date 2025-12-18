@@ -43,6 +43,15 @@ if dados:
   st.subheader(f"Evolução do Preço {opcao_escolhida}")
   st.line_chart(df_filtrado, x="data_hora", y="valor")
 
+  st.divider()
+  df_resumo = df.groupby('produto')['valor'].agg(['min', 'max', 'mean']).reset_index()
+
+  df_resumo.columns = ['Produto', 'Preço Mínimo', 'Preço Máximo', 'Preço Médio']
+
+  st.subheader("📊 Estatísticas por Produto")
+  st.dataframe(df_resumo)
+
+
   with st.expander("Ver Dados Brutos"):
         st.dataframe(df.sort_values(by="data_hora", ascending=False))
 
