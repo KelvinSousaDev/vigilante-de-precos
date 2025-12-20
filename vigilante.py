@@ -33,7 +33,45 @@ class Vigilante:
       "meta_preco": 4500.00
       }
     ]
-  
+
+  def salvar_no_postgres(self, nome, url, preco):
+      try:
+          # 1. Conexão Rápida (Idealmente ficaria num arquivo separado, mas vamos simplificar hoje)
+          conn = psycopg2.connect(
+              dbname="postgres", user="postgres", password="admin", host="localhost", port="5432"
+          )
+          cursor = conn.cursor()
+
+          # 2. Passo Tático: Descobrir o ID do Produto (Dimensão)
+          # Tenta achar o produto pela URL (que é única)
+          cursor.execute("SELECT id FROM dim_produtos WHERE url_produto = %s", (url,))
+          resultado = cursor.fetchone()
+
+          if resultado:
+              # Se já existe, pega o ID
+              produto_id = resultado[0]
+          else:
+              # Se não existe, cria e retorna o novo ID (RETURNING id)
+              print(f"🆕 Produto Novo detectado: {nome}")
+              cursor.execute(
+                  "INSERT INTO dim_produtos (nome_produto, url_produto) VALUES (%s, %s) RETURNING id",
+                  (nome, url)
+              )
+              produto_id = cursor.fetchone()[0]
+
+          # 3. Passo Final: Gravar o Preço (Fato)
+          cursor.execute(
+              "INSERT INTO fato_precos (produto_id, valor_coletado) VALUES (%s, %s)",
+              (produto_id, preco)
+          )
+          
+          conn.commit() # Salva de verdade
+          print(f"💾 Preço de R$ {preco} salvo no PostgreSQL para o ID {produto_id}")
+
+      except Exception as e:
+          print(f"❌ Erro ao salvar no Banco: {e}")
+      finally:
+          if 'conn' in locals(): conn.close()
 
   def salvar_no_banco(self, produto, valor, loja):
     DATABASE_URL = os.getenv("DATABASE_URL")
@@ -104,6 +142,7 @@ class Vigilante:
         preco = self.verificar_mercadolivre(item['url'])
       if preco:
         self.salvar_no_banco(item['nome'], preco, item['loja'])
+        self.salvar_no_postgres(item['nome'], item['url'], preco)
 
         if preco <= item['meta_preco']:
           msg = f"🚨 PROMOÇÃO DETECTADA!\nProduto: {item['nome']}\nPreço Atual: R$ {preco}\nLink: {item['url']}"
@@ -112,7 +151,6 @@ class Vigilante:
         print("❌ Falha ao obter preço.")
       print("Aguardando...")
       time.sleep(5)
-      
 
 if __name__ == "__main__":
     bot = Vigilante()
