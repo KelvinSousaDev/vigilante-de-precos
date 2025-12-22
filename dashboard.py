@@ -1,59 +1,62 @@
 import requests
 import streamlit as st
 import pandas as pd
+import psycopg2
 
-st.set_page_config(page_title="Vigilante Dashboard", page_icon=":eagle:", layout="centered")
+st.set_page_config(page_title="Vigilante Dashboard", page_icon=":eagle:", layout="wide")
 st.title("Vigilante de Preços")
 
-URL_API = "https://vigilante-api.onrender.com/historico"
-
 @st.cache_data
-def carregar_dados():
-  response = requests.get(URL_API)
-  return response.json()
+def carregar_dados_do_banco():
+  try:
+    conn = psycopg2.connect(
+      host="localhost",
+      user="postgres",
+      password="admin",
+      database="postgres"
+    )
 
-dados = carregar_dados()
+    querry = """
+    SELECT 
+        dim.nome_produto,
+        fato.valor_coletado,
+        fato.data_coleta
+    FROM 
+        fato_precos fato
+    JOIN 
+        dim_produtos dim ON fato.produto_id = dim.id
+    ORDER BY
+        fato.data_coleta DESC
+      """
 
-if dados:
-  df = pd.DataFrame(dados)
-  df['data_hora'] = pd.to_datetime(df['data_hora'])
-  df['valor'] = pd.to_numeric(df['valor'])
+    df = pd.read_sql_query(querry, conn)
+    conn.close()
+    return df
+  except Exception as e:
+        st.error(f"Erro de Conexão: {e}")
+        return pd.DataFrame()
 
-  lista_opcoes = df['produto'].unique()
-  opcao_escolhida = st.sidebar.selectbox("Escolha o Produto", lista_opcoes)
+st.title("🦇 Monitor de Preços (PostgreSQL Real-Time)")
+df = carregar_dados_do_banco()
 
-  df_filtrado = df[df['produto'] == opcao_escolhida]
-
+if not df.empty:
   col1, col2, col3 = st.columns(3)
+  col1.metric("Total de Coletas", len(df))
+  col2.metric("Produto Mais Recente", df['nome_produto'].iloc[0])
+  col3.metric("Último Preço", f"R$ {df['valor_coletado'].iloc[0]:.2f}")
 
-  atual = df_filtrado['valor'].iloc[-1]
-  minimo = df_filtrado['valor'].min()
-  media = df_filtrado['valor'].mean()
+  st.subheader("Evolução dos Preços")
 
-  variacao = 0
+  produtos = df["nome_produto"].unique()
+  produto_selecionado = st.selectbox("Selecione o Produto: ", produtos)
 
-  if df_filtrado['valor'].count() >= 2:
-    anterior = df_filtrado['valor'].iloc[-2]
-    variacao = atual - anterior
+  df_filtrado = df[df["nome_produto"] == produto_selecionado]
 
-  col1.metric("Preço Atual", f"R$ {atual:.2f}", delta=f"{variacao:.2f}", delta_color="inverse")
-  col2.metric("Preço Minimo", f"R$ {minimo:.2f}")
-  col3.metric("Preço Médio", f"R$ {media:.2f}")
-
-  st.subheader(f"Evolução do Preço {opcao_escolhida}")
-  st.line_chart(df_filtrado, x="data_hora", y="valor")
+  st.line_chart(df_filtrado, x="data_coleta", y="valor_coletado")
 
   st.divider()
-  df_resumo = df.groupby('produto')['valor'].agg(['min', 'max', 'mean']).reset_index()
+  st.subheader("Dados Brutos")
 
-  df_resumo.columns = ['Produto', 'Preço Mínimo', 'Preço Máximo', 'Preço Médio']
-
-  st.subheader("📊 Estatísticas por Produto")
-  st.dataframe(df_resumo)
-
-
-  with st.expander("Ver Dados Brutos"):
-        st.dataframe(df.sort_values(by="data_hora", ascending=False))
-
+  st.dataframe(df)
 else:
-    st.error("Erro: Não foi possível carregar os dados da API.")
+    st.warning("Banco de dados vazio ou sem conexão.")
