@@ -40,23 +40,51 @@ st.title("🦇 Monitor de Preços (PostgreSQL Real-Time)")
 df = carregar_dados_do_banco()
 
 if not df.empty:
-  col1, col2, col3 = st.columns(3)
+  st.markdown("### 📈 Status do Sistema")
+  col1, col2 = st.columns(2)
   col1.metric("Total de Coletas", len(df))
-  col2.metric("Produto Mais Recente", df['nome_produto'].iloc[0])
-  col3.metric("Último Preço", f"R$ {df['valor_coletado'].iloc[0]:.2f}")
+  col2.metric("Produtos Monitorados", len(df['nome_produto'].unique()))
 
-  st.subheader("Evolução dos Preços")
+  st.divider()
+  st.markdown("### 🔍 Análise Detalhada")
 
   produtos = df["nome_produto"].unique()
   produto_selecionado = st.selectbox("Selecione o Produto: ", produtos)
-
   df_filtrado = df[df["nome_produto"] == produto_selecionado]
+
+  preco_atual = df_filtrado['valor_coletado'].iloc[0]
+  menor_preco_historico = df_filtrado['valor_coletado'].min()
+  media_preco = df_filtrado['valor_coletado'].mean()
+  delta_media = preco_atual - media_preco
+  data_atual = pd.to_datetime(df_filtrado['data_coleta'].iloc[0]).strftime('%d/%m %H:%M')
+
+  kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+  kpi1.metric(
+     label="Preço Atual",
+     value=f"R$ {preco_atual:.2f}",
+     delta=f"{delta_media:.2f}",
+     delta_color="inverse"
+  )
+
+  kpi2.metric(
+     label="Menor Preço Histórico",
+     value=f"R$ {menor_preco_historico:.2f}"
+  )
+
+  kpi3.metric(
+    label="Média de Preço",
+    value=f"R$ {media_preco:.2f}"
+)
+
+  kpi4.metric(
+        label="Última Atualização",
+        value=data_atual
+    )
 
   st.line_chart(df_filtrado, x="data_coleta", y="valor_coletado")
 
-  st.divider()
-  st.subheader("Dados Brutos")
-
-  st.dataframe(df)
+  with st.expander(f"Ver dados brutos de {produto_selecionado}"):
+          st.dataframe(df_filtrado)
 else:
     st.warning("Banco de dados vazio ou sem conexão.")
