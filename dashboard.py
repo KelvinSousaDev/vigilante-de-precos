@@ -1,20 +1,27 @@
-import requests
 import streamlit as st
 import pandas as pd
 import psycopg2
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 st.set_page_config(page_title="Vigilante Dashboard", page_icon=":eagle:", layout="wide")
 st.title("Vigilante de Preços")
 
 @st.cache_data
 def carregar_dados_do_banco():
+  DATABASE_URL = os.getenv("DATABASE_URL")
   try:
-    conn = psycopg2.connect(
-      host="localhost",
-      user="postgres",
-      password="admin",
-      database="postgres"
-    )
+    if DATABASE_URL:
+      conn = psycopg2.connect(DATABASE_URL)
+    else:
+      conn = psycopg2.connect(
+                host="localhost", 
+                user="postgres", 
+                password="admin", 
+                database="postgres"
+            )
 
     querry = """
     SELECT 

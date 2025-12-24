@@ -7,7 +7,6 @@ import psycopg2
 from curl_cffi import requests as cffi_requests
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 class Vigilante:
@@ -35,23 +34,21 @@ class Vigilante:
     ]
 
   def salvar_no_postgres(self, nome, url, preco):
+      DATABASE_URL = os.getenv("DATABASE_URL")
       try:
-          # 1. Conexão Rápida (Idealmente ficaria num arquivo separado, mas vamos simplificar hoje)
-          conn = psycopg2.connect(
-              dbname="postgres", user="postgres", password="admin", host="localhost", port="5432"
-          )
+          if DATABASE_URL:
+             conn = psycopg2.connect(DATABASE_URL)
+          else:
+             conn = psycopg2.connect(host="localhost", database="postgres", user="postgres", password="admin")
+            
           cursor = conn.cursor()
 
-          # 2. Passo Tático: Descobrir o ID do Produto (Dimensão)
-          # Tenta achar o produto pela URL (que é única)
           cursor.execute("SELECT id FROM dim_produtos WHERE url_produto = %s", (url,))
           resultado = cursor.fetchone()
 
           if resultado:
-              # Se já existe, pega o ID
               produto_id = resultado[0]
           else:
-              # Se não existe, cria e retorna o novo ID (RETURNING id)
               print(f"🆕 Produto Novo detectado: {nome}")
               cursor.execute(
                   "INSERT INTO dim_produtos (nome_produto, url_produto) VALUES (%s, %s) RETURNING id",
@@ -59,46 +56,18 @@ class Vigilante:
               )
               produto_id = cursor.fetchone()[0]
 
-          # 3. Passo Final: Gravar o Preço (Fato)
           cursor.execute(
               "INSERT INTO fato_precos (produto_id, valor_coletado) VALUES (%s, %s)",
               (produto_id, preco)
           )
           
-          conn.commit() # Salva de verdade
+          conn.commit()
           print(f"💾 Preço de R$ {preco} salvo no PostgreSQL para o ID {produto_id}")
 
       except Exception as e:
           print(f"❌ Erro ao salvar no Banco: {e}")
       finally:
           if 'conn' in locals(): conn.close()
-
-  def salvar_no_banco(self, produto, valor, loja):
-    DATABASE_URL = os.getenv("DATABASE_URL")
-
-    if DATABASE_URL:
-      conn = psycopg2.connect(DATABASE_URL)
-      cursor = conn.cursor()
-      cursor.execute('''
-        CREATE TABLE IF NOT EXISTS historico_precos (
-            id SERIAL PRIMARY KEY,
-            produto TEXT,
-            valor DECIMAL(10, 2),
-            loja TEXT,
-            data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-      ''')
-      cursor.execute("INSERT INTO historico_precos(produto, valor, loja) VALUES(%s, %s, %s)", (produto, valor, loja))
-      conn.commit()
-      conn.close()
-    else:
-      conn = sqlite3.connect('precos.db')
-      cursor = conn.cursor()
-      cursor.execute("INSERT INTO historico_precos(produto, valor, loja) VALUES(?, ?, ?)", (produto, valor, loja))
-      conn.commit()
-      conn.close()
-
-    print(f"💾 Salvo: {produto} - R$ {valor}")
 
   def verificar_mercadolivre(self, url):
     try:
@@ -141,7 +110,6 @@ class Vigilante:
       if item['loja'] == "Mercado Livre":
         preco = self.verificar_mercadolivre(item['url'])
       if preco:
-        self.salvar_no_banco(item['nome'], preco, item['loja'])
         self.salvar_no_postgres(item['nome'], item['url'], preco)
 
         if preco <= item['meta_preco']:
