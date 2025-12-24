@@ -12,8 +12,20 @@ async def index():
 @app.get("/historico")
 async def historico():
   db_url = os.getenv("DATABASE_URL")
-  query_segura = "SELECT id, produto, valor, loja, data_hora FROM historico_precos"
-
+  query_segura = """
+      SELECT 
+          f.id, 
+          p.nome_produto AS produto, 
+          f.valor_coletado AS valor, 
+          p.loja, 
+          f.data_coleta AS data_hora 
+      FROM 
+          fato_precos f
+      JOIN 
+          dim_produtos p ON f.produto_id = p.id
+      ORDER BY 
+          f.data_coleta DESC;
+      """
   resultados = []
 
   if db_url:
