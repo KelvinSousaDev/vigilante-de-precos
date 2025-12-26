@@ -1,6 +1,5 @@
 import time
 from bs4 import BeautifulSoup
-import sqlite3
 from notificador import enviar_telegram
 import os
 import psycopg2
@@ -30,6 +29,12 @@ class Vigilante:
       "url": "https://www.mercadolivre.com.br/notebook-gamer-asus-tuf-gaming-a15-amd-ryzen-7-7435hs-31-ghz-rtx3050-16gb-ram-512gb-ssd-windows-11-home-tela-156-144hz-ips-fhd-graphite-black-fa506ncr-hn088w/p/MLB45998098",
       "loja": "Mercado Livre",
       "meta_preco": 4500.00
+      },
+      {
+      "nome": "Café Baggio",
+      "url": "https://a.co/d/3TkFdEo",
+      "loja": "Amazon",
+      "meta_preco": 30.00
       }
     ]
 
@@ -100,15 +105,47 @@ class Vigilante:
     except Exception as e:
       print(f"Erro ao ler ML: {e}")
       return None
-    
+  
+  def verificar_amazon(self,url):
+     try:
+        resposta = cffi_requests.get(
+            url,
+            impersonate="chrome120",
+            timeout=30
+        )
+        print(f"📡 Status HTTP: {resposta.status_code}")
+
+        soup = BeautifulSoup(resposta.content, 'html.parser')
+
+        real = soup.find(class_="a-price-whole")
+        cents = soup.find(class_="a-price-fraction")
+        if real and cents:
+           real_texto = real.get_text().replace('.', '').replace(',', '.')
+           cents_texto = cents.get_text().strip()
+           texto_final = f"{real_texto}{cents_texto}"
+
+           return float(texto_final)
+        
+        print(f"❌ Falha ao obter preço. Título: {soup.title.string if soup.title else 'Sem título'}")
+        return None
+
+     except Exception as e:
+        print(f"Erro ao ler Amazon: {e}")
+        return None
+
+
   def rodar(self):
     print("👀 Iniciando ronda de preços...")
     for item in self.lista_produtos:
       print(f"Verificando: {item['nome']}...")
-
       preco = None
+      # --- LOJAS ---
       if item['loja'] == "Mercado Livre":
         preco = self.verificar_mercadolivre(item['url'])
+      
+      if item['loja'] == "Amazon":
+        preco = self.verificar_amazon(item['url'])
+      # -------------
       if preco:
         self.salvar_no_postgres(item['nome'], item['url'], preco)
 
