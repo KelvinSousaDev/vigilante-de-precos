@@ -38,7 +38,7 @@ class Vigilante:
       }
     ]
 
-  def salvar_no_postgres(self, nome, url, preco):
+  def salvar_no_postgres(self, nome, url, preco, loja):
       DATABASE_URL = os.getenv("DATABASE_URL")
       try:
           if DATABASE_URL:
@@ -54,10 +54,10 @@ class Vigilante:
           if resultado:
               produto_id = resultado[0]
           else:
-              print(f"🆕 Produto Novo detectado: {nome}")
+              print(f"🆕 Produto Novo detectado: {nome} ({loja})")
               cursor.execute(
-                  "INSERT INTO dim_produtos (nome_produto, url_produto) VALUES (%s, %s) RETURNING id",
-                  (nome, url)
+                  "INSERT INTO dim_produtos (nome_produto, url_produto, loja) VALUES (%s, %s, %s) RETURNING id",
+                  (nome, url, loja)
               )
               produto_id = cursor.fetchone()[0]
 
@@ -147,7 +147,7 @@ class Vigilante:
         preco = self.verificar_amazon(item['url'])
       # -------------
       if preco:
-        self.salvar_no_postgres(item['nome'], item['url'], preco)
+        self.salvar_no_postgres(item['nome'], item['url'], preco, item['loja'])
 
         if preco <= item['meta_preco']:
           msg = f"🚨 PROMOÇÃO DETECTADA!\nProduto: {item['nome']}\nPreço Atual: R$ {preco}\nLink: {item['url']}"

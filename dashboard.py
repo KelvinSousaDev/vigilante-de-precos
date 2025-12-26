@@ -26,6 +26,7 @@ def carregar_dados_do_banco():
     querry = """
     SELECT 
         dim.nome_produto,
+        dim.loja,
         fato.valor_coletado,
         fato.data_coleta
     FROM 
