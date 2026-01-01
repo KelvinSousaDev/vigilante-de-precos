@@ -99,9 +99,10 @@ with tab1:
     st.divider()
     st.markdown("### 🔍 Análise Detalhada")
 
-    produtos = df["nome_produto"].unique()
-    produto_selecionado = st.selectbox("Selecione o Produto: ", produtos)
-    df_filtrado = df[df["nome_produto"] == produto_selecionado]
+    df['item_identificador'] = df["nome_produto"] + " - " + df['loja']
+    produtos_unicos = df["item_identificador"].unique()
+    produto_selecionado = st.selectbox("Selecione o Produto: ", produtos_unicos)
+    df_filtrado = df[df["item_identificador"] == produto_selecionado]
 
     preco_atual = df_filtrado['valor_coletado'].iloc[0]
     menor_preco_historico = df_filtrado['valor_coletado'].min()
