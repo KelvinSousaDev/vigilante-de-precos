@@ -11,32 +11,40 @@ load_dotenv()
 class Vigilante:
   def __init__(self):
     self.headers = None
-    self.lista_produtos = [
-      {
-      "nome": "Lego MP4/40",
-      "url": "https://www.mercadolivre.com.br/lego-icons-tributo-ayrton-senna-mclaren-mp44-693-pc-10330/p/MLB34191654",
-      "loja": "Mercado Livre",
-      "meta_preco": 250.00
-      },
-      {
-      "nome": "Café Baggio",
-      "url": "https://www.mercadolivre.com.br/cafe-gourmet-torradomoido-100-arabica-aromas-baggio-250gr-aroma-chocolate-com-avel/p/MLB19558358",
-      "loja": "Mercado Livre",
-      "meta_preco": 30.00
-      },
-      {
-      "nome": "Notebook ASUS TUF - RTX 3050",
-      "url": "https://www.mercadolivre.com.br/notebook-gamer-asus-tuf-gaming-a15-amd-ryzen-7-7435hs-31-ghz-rtx3050-16gb-ram-512gb-ssd-windows-11-home-tela-156-144hz-ips-fhd-graphite-black-fa506ncr-hn088w/p/MLB45998098",
-      "loja": "Mercado Livre",
-      "meta_preco": 4500.00
-      },
-      {
-      "nome": "Café Baggio",
-      "url": "https://a.co/d/3TkFdEo",
-      "loja": "Amazon",
-      "meta_preco": 30.00
-      }
-    ]
+    self.lista_produtos = [] 
+    self.carregar_produtos_do_banco()
+
+  def carregar_produtos_do_banco(self):
+     DATABASE_URL = os.getenv("DATABASE_URL")
+     try:
+        if DATABASE_URL:
+           conn = psycopg2.connect(DATABASE_URL)
+        else:
+           conn = psycopg2.connect(host="localhost", database="postgres", user="postgres", password="admin")
+        
+        cursor = conn.cursor()
+
+        query = "SELECT nome_produto, url_produto, loja, meta_preco FROM dim_produtos"
+        cursor.execute(query)
+        produtos_retornados = cursor.fetchall()
+
+        self.lista_produtos = []
+
+        for item in produtos_retornados:
+           novo_produto = {
+                "nome": item[0],       
+                "url": item[1],        
+                "loja": item[2],       
+                "meta_preco": float(item[3]) if item[3] is not None else 0.0
+                }
+           self.lista_produtos.append(novo_produto)
+
+        print(f"🦇 Configuração atualizada: {len(self.lista_produtos)} alvos carregados do DB.")
+        conn.close()
+     except Exception as e:
+        print(f"❌ Erro ao carregar produtos do banco: {e}")
+        self.lista_produtos = []
+     
 
   def salvar_no_postgres(self, nome, url, preco, loja):
       DATABASE_URL = os.getenv("DATABASE_URL")
