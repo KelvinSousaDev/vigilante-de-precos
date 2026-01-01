@@ -3,7 +3,7 @@ import pandas as pd
 import psycopg2
 from dotenv import load_dotenv
 import os
-from datetime import time
+import time
 
 load_dotenv()
 
@@ -59,7 +59,7 @@ def adicionar_produto(nome, url, loja, meta):
       """
       cursor.execute(query, (nome, url, loja, meta))
       conn.commit()
-      conn.close
+      conn.close()
       return True
     except Exception as e:
       st.error(f"Erro ao Adicionar: {e}")
@@ -67,7 +67,7 @@ def adicionar_produto(nome, url, loja, meta):
 
 def deletar_produto(produto_id):
     try:
-      conn = get_connection
+      conn = get_connection()
       cursor = conn.cursor()
 
       query_limpeza = "DELETE FROM fato_precos WHERE produto_id = %s"
@@ -151,10 +151,10 @@ with tab2:
 
       if st.form_submit_button("💾 Salvar"):
          if adicionar_produto(novo_nome, nova_url, nova_loja, novo_meta):
-            st.sucess("Produto Salvo!")
+            st.success("Produto Salvo!")
             time.sleep(1)
             st.rerun
-            
+
    st.divider()
    st.subheader("🗑️ Remover Produtos")
 
