@@ -9,6 +9,25 @@ load_dotenv()
 
 st.set_page_config(page_title="Vigilante Dashboard", page_icon=":eagle:", layout="wide")
 
+# Sistema de Login Temporario (Evitar que Modifiquem o db Atual)
+
+def verificar_senha():
+   if st.session_state.get("password_correct", False):
+      return True
+   
+   st.title("🔒 Acesso Restrito - Vigilante v2.0")
+   senha_input = st.text_input("Digite a Senha Mestra:", type="password")
+
+   SENHA_SECRETA = os.getenv("SENHA_DASHBOARD")
+
+   if st.button("Entrar"):
+      if senha_input == SENHA_SECRETA:
+         st.session_state["password_correct"] = True
+         st.rerun()
+      else:
+         st.error("Senha Incorreta! Acesso Negado 🦇")
+   return False
+
 def get_connection():
      DATABASE_URL = os.getenv("DATABASE_URL")
      if DATABASE_URL:
@@ -141,6 +160,10 @@ with tab1:
   else:
       st.warning("Banco de dados vazio ou sem conexão.")
 with tab2:
+   if not verificar_senha():
+      st.stop()
+      
+   st.success("🔓 Acesso de Administrador Concedido")
    st.header("Cadastrar Novo Alvo")
 
    with st.form("form_cadastro"):
