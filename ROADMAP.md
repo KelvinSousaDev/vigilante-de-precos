@@ -8,9 +8,9 @@
 
 _Foco: Parar de editar código para adicionar produtos._
 
-- [ ] **Database First:**
+- [x] **Database First:**
   - Alterar `vigilante.py` para ler produtos da tabela `dim_produtos` ao invés da lista fixa (`self.lista_produtos`).
-- [ ] **CRUD no Dashboard:**
+- [x] **CRUD no Dashboard:**
   - Criar aba "Gerenciar Produtos" no Streamlit.
   - Formulário para adicionar (Nome, URL, Meta Preço) e botão para deletar produtos do banco.
 
