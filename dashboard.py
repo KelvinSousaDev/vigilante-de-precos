@@ -4,29 +4,11 @@ import psycopg2
 from dotenv import load_dotenv
 import os
 import time
+import bcrypt
 
 load_dotenv()
 
 st.set_page_config(page_title="Vigilante Dashboard", page_icon=":eagle:", layout="wide")
-
-# Sistema de Login Temporario (Evitar que Modifiquem o db Atual)
-
-def verificar_senha():
-   if st.session_state.get("password_correct", False):
-      return True
-   
-   st.title("🔒 Acesso Restrito - Vigilante v2.0")
-   senha_input = st.text_input("Digite a Senha Mestra:", type="password")
-
-   SENHA_SECRETA = os.getenv("SENHA_DASHBOARD")
-
-   if st.button("Entrar"):
-      if senha_input == SENHA_SECRETA:
-         st.session_state["password_correct"] = True
-         st.rerun()
-      else:
-         st.error("Senha Incorreta! Acesso Negado 🦇")
-   return False
 
 def get_connection():
      DATABASE_URL = os.getenv("DATABASE_URL")
@@ -35,25 +17,63 @@ def get_connection():
      else:
        return psycopg2.connect(host="localhost", database="postgres", user="postgres", password="admin")
 
+def validar_usuario(email, senha):
+   conn = get_connection()
+   if not conn:
+      return None
+   
+   try:
+    cursor = conn.cursor()
 
-def carregar_dados():
+    query = "SELECT id, nome, senha_hash FROM usuarios WHERE email = %s"
+
+    cursor.execute(query, (email,))
+    resultado = cursor.fetchone()
+    if resultado is None:
+          return None
+    
+    user_id, nome_banco, senha_hash_banco = resultado
+
+    if bcrypt.checkpw(senha.encode('utf-8'), senha_hash_banco.encode('utf-8')):
+       return (user_id, nome_banco)
+    else:
+       return None
+       
+   except Exception as e:
+      st.error(f"Erro na validação: {e}")
+   finally:
+      conn.close()
+
+def carregar_dados(usurario_id=None):
   conn = get_connection()
-  querry = """
-  SELECT 
-      dim.nome_produto,
-      dim.loja,
-      fato.valor_coletado,
-      fato.data_coleta
-  FROM 
-      fato_precos fato
-  JOIN 
-      dim_produtos dim ON fato.produto_id = dim.id
-  ORDER BY
-      fato.data_coleta DESC
+  if not conn:
+     return pd.DataFrame()
+  
+  if  not usurario_id:
+    conn.close()
+    return pd.DataFrame()
+  
+  query = """
+      SELECT
+        p.id, 
+        p.nome_produto, 
+        p.loja, 
+        p.url_produto, 
+        p.meta_preco,
+        f.valor_coletado, 
+        f.data_coleta
+      FROM dim_produtos p
+      JOIN fato_precos f ON p.id = f.produto_id
+      WHERE p.usuario_id = %s
+      ORDER BY f.data_coleta DESC
     """
-
-  df = pd.read_sql_query(querry, conn)
-  conn.close()
+  try:
+    df = pd.read_sql_query(query, conn, params=(usurario_id,))
+  except Exception as e:
+    st.error(f"Erro no SQL: {e}")
+    df = pd.DataFrame()
+  finally:
+        conn.close()
   return df
 
 def carregar_produtos_cadastrados():
@@ -67,22 +87,26 @@ def carregar_produtos_cadastrados():
       st.error(f"Erro ao carregar lista de produtos: {e}")
       return pd.DataFrame()
     
-def adicionar_produto(nome, url, loja, meta):
+def adicionar_produto(nome, url, loja, meta, usuario_id):
+    conn = get_connection()
+    if not conn:
+        return
+      
     try:
-      conn = get_connection()
       cursor = conn.cursor()
 
       query = """
-          INSERT INTO dim_produtos(nome_produto, url_produto, loja, meta_preco)
-          VALUES (%s, %s, %s, %s)
+          INSERT INTO dim_produtos(nome_produto, url_produto, loja, meta_preco, usuario_id)
+          VALUES (%s, %s, %s, %s, %s)
       """
-      cursor.execute(query, (nome, url, loja, meta))
+      cursor.execute(query, (nome, url, loja, meta, usuario_id))
       conn.commit()
-      conn.close()
-      return True
+      st.success(f"Produto '{nome}' monitorado com sucesso!")
     except Exception as e:
       st.error(f"Erro ao Adicionar: {e}")
       return False
+    finally:
+       conn.close()
 
 def deletar_produto(produto_id):
     try:
@@ -104,12 +128,51 @@ def deletar_produto(produto_id):
 
 
 st.title("🦇 Vigilante de Preços v2.0")
+
+# Sistema de login usando session_state (Se o usuario não iniciou sessão ainda, aparece a tela de login, e bloqueia as informações)
+
+if 'usuario_id' not in st.session_state:
+  st.info("🔒 Acesso restrito. Identifique-se.")
+  col_login, col_vazia = st.columns([1, 2])
+
+  with col_login:
+     with st.form("form_login_global"):
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        btn_entrar = st.form_submit_button("Acessar Sistema")
+
+        if btn_entrar:
+           resultado = validar_usuario(email, senha)
+           if resultado:
+              user_id, user_nome = resultado
+              st.session_state['usuario_id'] = user_id
+              st.session_state['usuario_nome'] = user_nome
+              st.success(f"Bem-vindo, {user_nome}!")
+              time.sleep(1)
+              st.rerun()
+           else:
+              st.error("Credenciais inválidas! 🦇")
+  st.stop()
+
+with st.sidebar:
+  st.image("https://img.icons8.com/color/96/batman-new.png", width=50)
+  st.markdown(f"Olá, **{st.session_state['usuario_nome']}**")
+
+  if st.button("Sair (Logout)", type="primary", use_container_width=True):
+     del st.session_state['usuario_id']
+     st.rerun()
+
+  st.divider()
+  st.caption("Sistema Vigilante v2.0")
+
 tab1, tab2 = st.tabs(["📊 Dashboard", "⚙️ Gerenciar"])
 
-with tab1:
-  df = carregar_dados()
+# Tela Principal de Métricas ------------------------------------------------------
 
-  if not df.empty:
+with tab1:
+   df = carregar_dados(st.session_state['usuario_id'])
+
+   if not df.empty:
     st.markdown("### 📈 Status do Sistema")
     col1, col2 = st.columns(2)
     col1.metric("Total de Coletas", len(df))
@@ -136,35 +199,37 @@ with tab1:
       value=f"R$ {preco_atual:.2f}",
       delta=f"{delta_media:.2f}",
       delta_color="inverse"
-    )
+      )
 
     kpi2.metric(
       label="Menor Preço Histórico",
       value=f"R$ {menor_preco_historico:.2f}"
-    )
+      )
 
     kpi3.metric(
       label="Média de Preço",
       value=f"R$ {media_preco:.2f}"
-  )
+      )
 
     kpi4.metric(
-          label="Última Atualização",
-          value=data_atual
+      label="Última Atualização",
+      value=data_atual
       )
 
     st.line_chart(df_filtrado, x="data_coleta", y="valor_coletado")
 
     with st.expander(f"Ver dados brutos de {produto_selecionado}"):
             st.dataframe(df_filtrado)
-  else:
-      st.warning("Banco de dados vazio ou sem conexão.")
+   else:
+    st.warning("Banco de dados vazio ou sem conexão.")
+
+# Tela de Gestão do usuário ------------------------------------------------------
+
 with tab2:
-   if not verificar_senha():
-      st.stop()
-      
-   st.success("🔓 Acesso de Administrador Concedido")
-   st.header("Cadastrar Novo Alvo")
+   st.header("⚙️ Gerenciar Produtos")
+
+   st.divider()
+   st.subheader("➕ Adicionar Produtos")
 
    with st.form("form_cadastro"):
       col_a, col_b = st.columns(2)
@@ -174,10 +239,10 @@ with tab2:
       novo_meta = st.number_input("Preço Alvo (R$)", min_value=0.0, format="%.2f")
 
       if st.form_submit_button("💾 Salvar"):
-         if adicionar_produto(novo_nome, nova_url, nova_loja, novo_meta):
+         if adicionar_produto(novo_nome, nova_url, nova_loja, novo_meta, st.session_state['usuario_id']):
             st.success("Produto Salvo!")
             time.sleep(1)
-            st.rerun
+            st.rerun()
 
    st.divider()
    st.subheader("🗑️ Remover Produtos")
