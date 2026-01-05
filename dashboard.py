@@ -44,12 +44,12 @@ def validar_usuario(email, senha):
    finally:
       conn.close()
 
-def carregar_dados(usurario_id=None):
+def carregar_dados(usuario_id=None):
   conn = get_connection()
   if not conn:
      return pd.DataFrame()
   
-  if  not usurario_id:
+  if not usuario_id:
     conn.close()
     return pd.DataFrame()
   
@@ -68,7 +68,7 @@ def carregar_dados(usurario_id=None):
       ORDER BY f.data_coleta DESC
     """
   try:
-    df = pd.read_sql_query(query, conn, params=(usurario_id,))
+    df = pd.read_sql_query(query, conn, params=(usuario_id,))
   except Exception as e:
     st.error(f"Erro no SQL: {e}")
     df = pd.DataFrame()
@@ -76,11 +76,11 @@ def carregar_dados(usurario_id=None):
         conn.close()
   return df
 
-def carregar_produtos_cadastrados():
+def carregar_produtos_cadastrados(usuario_id):
     try:
       conn = get_connection()
-      query = "SELECT id, nome_produto, loja, meta_preco, url_produto FROM dim_produtos ORDER BY id ASC"
-      df = pd.read_sql_query(query, conn)
+      query = "SELECT id, nome_produto, loja, meta_preco, url_produto FROM dim_produtos WHERE usuario_id = %s ORDER BY id ASC"
+      df = pd.read_sql_query(query, conn, params=(usuario_id,))
       conn.close()
       return df
     except Exception as e:
@@ -90,10 +90,16 @@ def carregar_produtos_cadastrados():
 def adicionar_produto(nome, url, loja, meta, usuario_id):
     conn = get_connection()
     if not conn:
-        return
+        return False
       
     try:
       cursor = conn.cursor()
+
+      cursor.execute("SELECT COUNT(*) FROM dim_produtos WHERE usuario_id = %s", (usuario_id,))
+      qtd_atual = cursor.fetchone()[0]
+      if qtd_atual >= 5:
+         st.error("🚫 Limite de segurança atingido! No Modo Demo, o limite é de 5 produtos por usuário.")
+         return False
 
       query = """
           INSERT INTO dim_produtos(nome_produto, url_produto, loja, meta_preco, usuario_id)
@@ -102,6 +108,8 @@ def adicionar_produto(nome, url, loja, meta, usuario_id):
       cursor.execute(query, (nome, url, loja, meta, usuario_id))
       conn.commit()
       st.success(f"Produto '{nome}' monitorado com sucesso!")
+      return True
+    
     except Exception as e:
       st.error(f"Erro ao Adicionar: {e}")
       return False
@@ -152,6 +160,33 @@ if 'usuario_id' not in st.session_state:
               st.rerun()
            else:
               st.error("Credenciais inválidas! 🦇")
+
+     st.divider()
+     st.subheader("Apenas visitando?")
+     if st.button("🚀 Modo Visitante", use_container_width=True):
+        conn = get_connection()
+        if conn:
+          try:
+            cursor = conn.cursor()
+
+            query = "SELECT id, nome FROM usuarios WHERE email = %s"
+            cursor.execute(query, ('demo@vigilante.com',))
+
+            resultado = cursor.fetchone()
+            if resultado is not None:
+              user_id, user_nome = resultado
+              st.session_state['usuario_id'] = user_id
+              st.session_state['usuario_nome'] = user_nome
+              st.success(f"Entrando como {user_nome}...")
+              time.sleep(1)
+              st.rerun()
+            else:
+               st.error("Erro: Usuário Visitante não encontrado no banco.")
+          except Exception as e:
+            st.error(f"Erro na conexão: {e}")
+          finally:
+            conn.close()
+
   st.stop()
 
 with st.sidebar:
@@ -247,7 +282,7 @@ with tab2:
    st.divider()
    st.subheader("🗑️ Remover Produtos")
 
-   df_produtos = carregar_produtos_cadastrados()
+   df_produtos = carregar_produtos_cadastrados(st.session_state['usuario_id'])
    if not df_produtos.empty:
       opcoes = df_produtos.apply(lambda x: f"{x['id']} - {x['nome_produto']} - {x['loja']}", axis=1)
       escolha = st.selectbox("Selecione para remover:", opcoes)
