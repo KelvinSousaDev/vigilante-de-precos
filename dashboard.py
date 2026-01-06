@@ -87,6 +87,25 @@ def carregar_produtos_cadastrados(usuario_id):
       st.error(f"Erro ao carregar lista de produtos: {e}")
       return pd.DataFrame()
     
+def verificar_saude_agente():
+   conn = get_connection()
+   if not conn:
+      return None, None
+   
+   try:
+      query = "SELECT data_hora, status FROM logs_execucao ORDER BY id DESC LIMIT 1"
+      df = pd.read_sql_query(query, conn)
+
+      if not df.empty:
+         return df.iloc[0]['data_hora'], df.iloc[0]['status']
+   except Exception as e:
+      return None, None
+   
+   finally:
+        conn.close()
+
+   return None, None
+
 def adicionar_produto(nome, url, loja, meta, usuario_id):
     conn = get_connection()
     if not conn:
@@ -205,6 +224,27 @@ tab1, tab2 = st.tabs(["📊 Dashboard", "⚙️ Gerenciar"])
 # Tela Principal de Métricas ------------------------------------------------------
 
 with tab1:
+   ultima_data, ultimo_status = verificar_saude_agente()
+   if ultima_data:
+      agora = pd.Timestamp.utcnow().tz_localize(None)
+      diff = agora - pd.to_datetime(ultima_data)
+      horas_atras = diff.total_seconds() / 3600
+
+      status_container = st.container()
+
+      if horas_atras < 6 and ultimo_status == "SUCESSO":
+        status_container.success(f"🟢 Agente Local: Online (Última ronda há {horas_atras:.1f}h)")
+      elif horas_atras > 24:
+        status_container.error(f"🔴 Agente Local: OFFLINE (Sem sinal há {horas_atras:.1f}h). Verifique seu computador!")
+      elif ultimo_status == 'ERRO':
+        status_container.error(f"⚠️ Agente Local: Erro na última execução ({horas_atras:.1f}h atrás). Verifique os logs.")
+      else:
+        status_container.warning(f"🟡 Agente Local: Ocioso ({horas_atras:.1f}h atrás)")
+
+   else:
+    st.info("⚪ Agente Local: Nenhum registro de atividade ainda.")
+  
+  
    df = carregar_dados(st.session_state['usuario_id'])
 
    if not df.empty:

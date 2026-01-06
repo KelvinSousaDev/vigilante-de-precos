@@ -144,26 +144,53 @@ class Vigilante:
 
   def rodar(self):
     print("👀 Iniciando ronda de preços...")
-    for item in self.lista_produtos:
-      print(f"Verificando: {item['nome']}...")
-      preco = None
-      # --- LOJAS ---
-      if item['loja'] == "Mercado Livre":
-        preco = self.verificar_mercadolivre(item['url'])
-      
-      if item['loja'] == "Amazon":
-        preco = self.verificar_amazon(item['url'])
-      # -------------
-      if preco:
-        self.salvar_no_postgres(item['nome'], item['url'], preco, item['loja'])
+    self.registrar_log("INICIANDO", "Começando a Ronda...")
 
-        if preco <= item['meta_preco']:
-          msg = f"🚨 PROMOÇÃO DETECTADA!\nProduto: {item['nome']}\nPreço Atual: R$ {preco}\nLink: {item['url']}"
-          enviar_telegram(msg)
-      else:
-        print("❌ Falha ao obter preço.")
-      print("Aguardando...")
-      time.sleep(5)
+    try:
+      contador_sucesso = 0
+
+      for item in self.lista_produtos:
+        print(f"Verificando: {item['nome']}...")
+        preco = None
+        # --- LOJAS ---
+        if item['loja'] == "Mercado Livre":
+          preco = self.verificar_mercadolivre(item['url'])
+        
+        if item['loja'] == "Amazon":
+          preco = self.verificar_amazon(item['url'])
+        # -------------
+        if preco:
+          self.salvar_no_postgres(item['nome'], item['url'], preco, item['loja'])
+          contador_sucesso += 1
+
+          if preco <= item['meta_preco']:
+            msg = f"🚨 PROMOÇÃO DETECTADA!\nProduto: {item['nome']}\nPreço Atual: R$ {preco}\nLink: {item['url']}"
+            enviar_telegram(msg)
+        else:
+          print("❌ Falha ao obter preço.")
+        time.sleep(5)
+
+      self.registrar_log("SUCESSO", f"Ronda finalizada. {contador_sucesso} preços coletados.")
+    except Exception as e:
+      msg_erro = f"Erro Fatal: {str(e)}"
+      print(msg_erro)
+      self.registrar_log("ERRO", msg_erro)
+
+  def registrar_log(self, status, detalhes):
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    try:
+      if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL)
+      
+      cursor = conn.cursor()
+      cursor.execute("INSERT INTO logs_execucao (status, detalhes) VALUES (%s, %s)", (status, detalhes))
+      conn.commit()
+
+    except Exception as e:
+      print(f"❌ Erro ao salvar no Banco: {e}")
+    finally:
+      if 'conn' in locals(): conn.close()
+   
 
 if __name__ == "__main__":
     bot = Vigilante()
