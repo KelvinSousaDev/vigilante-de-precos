@@ -135,6 +135,36 @@ def adicionar_produto(nome, url, loja, meta, usuario_id):
     finally:
        conn.close()
 
+def cadastrar_usuario(nome, email, senha):
+   conn = get_connection()
+   if not conn:
+    return False
+   
+   try:
+    cursor = conn.cursor()
+
+    salt = bcrypt.gensalt()
+    senha_hash = bcrypt.hashpw(senha.encode('utf-8'), salt).decode('utf-8')
+    
+    query = """
+        INSERT INTO usuarios (nome, email, senha_hash)
+        VALUES (%s, %s, %s)
+    """
+    cursor.execute(query, (nome, email, senha_hash))
+    conn.commit()
+    return True
+  
+   except psycopg2.errors.UniqueViolation:
+    st.error(f"O e-mail '{email}' já está cadastrado!")
+    return False
+   
+   except Exception as e:
+    st.error(f"Erro técnico ao cadastrar: {e}")
+    return False
+   
+   finally:
+      conn.close()
+
 def deletar_produto(produto_id):
     try:
       conn = get_connection()
@@ -154,57 +184,75 @@ def deletar_produto(produto_id):
       return False
 
 
-st.title("🦇 Vigilante de Preços v2.0")
-
-# Sistema de login usando session_state (Se o usuario não iniciou sessão ainda, aparece a tela de login, e bloqueia as informações)
+st.title("🦇 Vigilante de Preços v3.0")
 
 if 'usuario_id' not in st.session_state:
-  st.info("🔒 Acesso restrito. Identifique-se.")
-  col_login, col_vazia = st.columns([1, 2])
+  col_centro, col_vazia = st.columns([1, 2])
 
-  with col_login:
-     with st.form("form_login_global"):
-        email = st.text_input("E-mail")
-        senha = st.text_input("Senha", type="password")
-        btn_entrar = st.form_submit_button("Acessar Sistema")
+  with col_centro:
+    st.markdown("### Acesso Restrito")
+    tab_login, tab_cadastro = st.tabs(["🔑 Entrar", "📝 Criar Conta"])
 
-        if btn_entrar:
-           resultado = validar_usuario(email, senha)
-           if resultado:
-              user_id, user_nome = resultado
-              st.session_state['usuario_id'] = user_id
-              st.session_state['usuario_nome'] = user_nome
-              st.success(f"Bem-vindo, {user_nome}!")
-              time.sleep(1)
-              st.rerun()
-           else:
-              st.error("Credenciais inválidas! 🦇")
+    # Sistema de login usando session_state (Se o usuario não iniciou sessão ainda, aparece a tela de login, e bloqueia as informações)
 
-     st.divider()
-     st.subheader("Apenas visitando?")
-     if st.button("🚀 Modo Visitante", use_container_width=True):
-        conn = get_connection()
-        if conn:
-          try:
-            cursor = conn.cursor()
-
-            query = "SELECT id, nome FROM usuarios WHERE email = %s"
-            cursor.execute(query, ('demo@vigilante.com',))
-
-            resultado = cursor.fetchone()
-            if resultado is not None:
-              user_id, user_nome = resultado
-              st.session_state['usuario_id'] = user_id
-              st.session_state['usuario_nome'] = user_nome
-              st.success(f"Entrando como {user_nome}...")
-              time.sleep(1)
-              st.rerun()
+    with tab_login:
+      with st.form("form_login_global"):
+          email = st.text_input("E-mail")
+          senha = st.text_input("Senha", type="password")
+          btn_entrar = st.form_submit_button("Acessar Sistema")
+          if btn_entrar:
+            resultado = validar_usuario(email, senha)
+            if resultado:
+                user_id, user_nome = resultado
+                st.session_state['usuario_id'] = user_id
+                st.session_state['usuario_nome'] = user_nome
+                st.success(f"Bem-vindo, {user_nome}!")
+                time.sleep(1)
+                st.rerun()
             else:
-               st.error("Erro: Usuário Visitante não encontrado no banco.")
-          except Exception as e:
-            st.error(f"Erro na conexão: {e}")
-          finally:
-            conn.close()
+                st.error("Credenciais inválidas! 🦇")
+
+      st.divider()
+      st.subheader("Apenas visitando?")
+      if st.button("🚀 Modo Visitante", use_container_width=True):
+          conn = get_connection()
+          if conn:
+            try:
+              cursor = conn.cursor()
+
+              query = "SELECT id, nome FROM usuarios WHERE email = %s"
+              cursor.execute(query, ('demo@vigilante.com',))
+
+              resultado = cursor.fetchone()
+              if resultado is not None:
+                user_id, user_nome = resultado
+                st.session_state['usuario_id'] = user_id
+                st.session_state['usuario_nome'] = user_nome
+                st.success(f"Entrando como {user_nome}...")
+                time.sleep(1)
+                st.rerun()
+              else:
+                st.error("Erro: Usuário Visitante não encontrado no banco.")
+            except Exception as e:
+              st.error(f"Erro na conexão: {e}")
+            finally:
+              conn.close()
+
+    with tab_cadastro:
+      st.caption("Crie sua conta para monitorar seus produtos.")
+      with st.form("Cadastro de Usuário"):
+          novo_nome = st.text_input("Nome")
+          novo_email = st.text_input("E-mail")
+          nova_senha = st.text_input("Senha", type="password")
+          codigo = st.text_input("Código de Convite (Anti-Bot)", placeholder="Digite o código secreto...")
+          if st.form_submit_button("Criar Conta"):
+            if codigo == os.getenv("codigo_convite"):
+              if cadastrar_usuario(novo_nome, novo_email, nova_senha):
+                  st.success("Conta criada! Faça login na aba ao lado.")
+                  st.balloons()
+                  time.sleep(2)
+            else:
+              st.error("Código de convite inválido! Acesso negado.")
 
   st.stop()
 
