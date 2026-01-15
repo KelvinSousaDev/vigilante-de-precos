@@ -1,16 +1,14 @@
 import psycopg2
 from psycopg2 import sql
+from dotenv import load_dotenv
+import os
 
-db_config = {
-    'dbname': 'postgres',
-    'user': 'postgres',
-    'password': 'admin',
-    'host': 'localhost',
-    'port': '5432'
-}
+load_dotenv()
+
+db_url = os.getenv("DATABASE_URL")
 
 try:
-    conn = psycopg2.connect(**db_config)
+    conn = psycopg2.connect(db_url)
     conn.autocommit = True 
     cursor = conn.cursor()
     print("🦇 Conexão estabelecida com sucesso!")

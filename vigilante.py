@@ -45,6 +45,8 @@ class Vigilante:
         print(f"❌ Erro ao carregar produtos do banco: {e}")
         self.lista_produtos = []
      
+  
+     
 
   def salvar_no_postgres(self, nome, url, preco, loja):
       DATABASE_URL = os.getenv("DATABASE_URL")
