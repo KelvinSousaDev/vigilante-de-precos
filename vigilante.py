@@ -220,6 +220,18 @@ class Vigilante:
             item['preco_achado'], 
             item['loja']
          )
+         if item['preco_achado'] <= item['meta']:
+            print(f"🚨 PROMOÇÃO: {item['nome']} (R$ {item['preco_achado']})")
+
+            msg = (
+              f"🚨 *ALERTA DE PROMOÇÃO!* 🚨\n\n"
+              f"📦 *Produto:* {item['nome']}\n"
+              f"💰 *Preço Atual:* R$ {item['preco_achado']}\n"
+              f"🎯 *Sua Meta:* R$ {item['meta']}\n"
+              f"🏪 *Loja:* {item['loja']}\n\n"
+              f"🔗 [Comprar Agora]({item['url']})"
+              )
+            enviar_telegram(msg)
 
     except Exception as e:
       msg_erro = f"Erro Fatal: {str(e)}"
