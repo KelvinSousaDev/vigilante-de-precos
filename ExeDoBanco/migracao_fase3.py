@@ -30,18 +30,14 @@ def migrar_banco_fase3():
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
-     
      # Definir o Primeiro Usuário (ADMIN)
 
      print("👤 Configuração do Admin")
-     senha_plana = input("Digite a senha que deseja para o Admin: ")
+     senha_plana = os.getenv("ADMIN_PASSWORD", "admin123")
 
-     # Caso o usuário clique acidentalmente no enter, antes de digitar a senha
-     if not senha_plana:
-        print("⚠️ Senha vazia! Usando 'admin123' como fallback temporário.")
-        senha_plana = "admin123"
+     print(f"Senha definida automaticamente para o Admin.")
 
-     # Testando o bcrypt para a criptrografia de senhas
+     # Bcrypt para a criptrografia de senhas
 
      salt = bcrypt.gensalt()
      senha_hash = bcrypt.hashpw(senha_plana.encode('utf-8'), salt).decode('utf-8')
