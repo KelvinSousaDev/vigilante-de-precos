@@ -102,6 +102,21 @@ class Vigilante:
       finally:
           if 'conn' in locals(): conn.close()
 
+  @staticmethod
+  def limpar_preco(texto_bruto):
+     if not texto_bruto:
+        return 0.0
+     
+     texto = texto_bruto.replace("R$", "").strip()
+     texto = texto.replace("\n", "").replace("\r", "").replace("\t", "")
+     texto = texto.replace(".", "")
+     texto = texto.replace(",", ".")
+
+     try:
+       return float(texto)
+     except ValueError:
+        return 0.0
+
   async def verificar_mercadolivre(self, session, url):
     MAX_TENTATIVAS = 3
     for tentativa in range(MAX_TENTATIVAS):
@@ -133,8 +148,7 @@ class Vigilante:
         #Se não pegar no meta, pegamos na classe
         elemento_visual = soup.find(class_="andes-money-amount__fraction")
         if elemento_visual:
-          preco_texto = elemento_visual.get_text().replace('.', '').replace(',', '.')
-          return float(preco_texto)
+          return self.limpar_preco(elemento_visual.get_text())
         
         print(f"❌ Falha ao obter preço. Título: {soup.title.string if soup.title else 'Sem título'}")
         continue
@@ -172,11 +186,14 @@ class Vigilante:
           real = soup.find(class_="a-price-whole")
           cents = soup.find(class_="a-price-fraction")
           if real and cents:
-            real_texto = real.get_text().replace('.', '').replace(',', '.')
-            cents_texto = cents.get_text().strip()
-            texto_final = f"{real_texto}{cents_texto}"
+            texto_real = real.get_text().strip()
+            texto_cents = cents.get_text().strip()
 
-            return float(texto_final)
+            if texto_real.endswith(','):
+              texto_real = texto_real[:-1]
+
+            valor_montado = f"{texto_real},{texto_cents}"
+            return self.limpar_preco(valor_montado)
           
           print(f"❌ Falha ao obter preço. Título: {soup.title.string if soup.title else 'Sem título'}")
           continue
