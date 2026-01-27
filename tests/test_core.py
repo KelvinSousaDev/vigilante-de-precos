@@ -8,7 +8,6 @@ def test_limpeza_padrao_br():
 def test_limpeza_milhar():
     # Cenário: Preço alto com ponto (1.200,50)
     assert Vigilante.limpar_preco("R$ 1.200,50") == 1200.50
-    # O caso do seu debug (11.658,37)
     assert Vigilante.limpar_preco("11.658,37") == 11658.37
 
 def test_precos_amazon_sujos():
