@@ -1,7 +1,7 @@
 # 🦇 Vigilante de Preços: Engine de Monitoramento Híbrido (SaaS)
 
 [![CI Status](https://github.com/KelvinSousaDev/vigilante-de-precos/actions/workflows/testes_automatizados.yml/badge.svg)](https://github.com/KelvinSousaDev/vigilante-de-precos/actions)
-[![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-dashboard.onrender.com)
+[![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-api.onrender.com)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-336791?style=for-the-badge&logo=postgresql)](https://neon.tech/)
 
