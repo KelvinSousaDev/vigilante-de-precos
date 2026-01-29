@@ -91,4 +91,4 @@ python -m pytest
 
 ## 👨‍💻 Autor
 
-**Kelvin Sousa** - Engenharia de Dados & Backend [LinkedIn](www.linkedin.com/in/okelvinsousa) | [Portfólio](https://github.com/KelvinSousaDev)
+**Kelvin Sousa** - Engenharia de Dados & Backend [LinkedIn](https://www.linkedin.com/in/okelvinsousa) | [Portfólio](https://github.com/KelvinSousaDev)
