@@ -12,6 +12,14 @@ load_dotenv()
 
 class Vigilante:
   def __init__(self):
+    """
+    Inicializa o Agente Vigilante e configura o ambiente de coleta.
+
+    Responsabilidades:
+    1. Define Headers HTTP (User-Agent) para simular um navegador real e evitar bloqueios (WAF).
+    2. Estabelece conexão inicial com o Banco de Dados.
+    3. Carrega a lista de produtos monitorados para a memória do robô.
+    """
     self.headers = {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -23,6 +31,14 @@ class Vigilante:
     self.carregar_produtos_do_banco()
 
   async def main_async(self):
+     """
+     Orquestra o ciclo de vida assíncrono da coleta de dados.
+
+     Responsabilidades:
+     1. Instancia um Semáforo para limitar a concorrência (evita sobrecarga/bloqueio).
+     2. Gerencia a sessão HTTP de alta performance (AsyncSession).
+     3. Consolida e retorna os resultados de todas as tarefas de scraping.
+     """
      semaforo = asyncio.Semaphore(2)
 
      async with AsyncSession(impersonate="chrome120") as session:
@@ -36,6 +52,14 @@ class Vigilante:
         return [r for r in resultados if r is not None]
 
   def carregar_produtos_do_banco(self):
+     """
+     Sincroniza a memória do agente com a base de dados central (Neon/Postgres).
+
+     Responsabilidades:
+     1. Estabelece conexão segura com o Data Warehouse.
+     2. Executa query DQL para recuperar os alvos de monitoramento ativos.
+     3. Popula a fila de execução (self.lista_produtos) para o ciclo de extração.
+     """
      DATABASE_URL = os.getenv("DATABASE_URL")
      try:
         if DATABASE_URL:
@@ -67,6 +91,14 @@ class Vigilante:
         self.lista_produtos = []
 
   def salvar_no_postgres(self, nome, url, preco, loja):
+      """
+      Persiste os dados coletados no Data Warehouse, garantindo integridade referencial.
+
+      Responsabilidades:
+      1. Gerencia a conexão transacional (Commit/Rollback) com o NeonDB.
+      2. Implementa lógica de 'Idempotência': Verifica se o produto já existe na dimensão (`dim_produtos`) antes de criar.
+      3. Registra o novo ponto de dados na tabela de fatos (`fato_precos`) vinculada ao ID único do produto.
+      """
       DATABASE_URL = os.getenv("DATABASE_URL")
       try:
           if DATABASE_URL:
@@ -104,10 +136,17 @@ class Vigilante:
 
   @staticmethod
   def limpar_preco(texto_bruto):
+     """
+     Recebe o texto sujo do HTML (ex: 'R$ 1.200,50\\n') e converte para float (1200.50).
+     
+     Remove quebras de linha, R$ e converte pontuação do padrão BRL para Python.
+     Retorna 0.0 se houver erro de conversão.
+     """
      if not texto_bruto:
         return 0.0
      
      texto = texto_bruto.replace("R$", "").strip()
+     # Remove caracteres invisíveis que a Amazon costuma mandar
      texto = texto.replace("\n", "").replace("\r", "").replace("\t", "")
      texto = texto.replace(".", "")
      texto = texto.replace(",", ".")
@@ -118,6 +157,14 @@ class Vigilante:
         return 0.0
 
   async def verificar_mercadolivre(self, session, url):
+    """
+    Executa a estratégia de extração (Scraping) otimizada para o Mercado Livre.
+
+    Responsabilidades:
+    1. Implementa 'Retry Pattern' (3 tentativas) com Backoff Exponencial para tolerância a falhas.
+    2. Aplica 'Jitter' (atraso aleatório) para humanizar a requisição e evadir detecção de WAF.
+    3. Realiza Parsing Hierárquico: Prioriza metadados estruturados (Microdata) e faz fallback para seletores CSS visuais.
+    """
     MAX_TENTATIVAS = 3
     for tentativa in range(MAX_TENTATIVAS):
       try:
@@ -161,6 +208,14 @@ class Vigilante:
     return None
   
   async def verificar_amazon(self,session, url):
+    """
+    Executa a estratégia de extração (Scraping) específica para a estrutura da Amazon.
+
+    Responsabilidades:
+    1. Gerencia tolerância a falhas com 'Retry Pattern' e Backoff Exponencial.
+    2. Utiliza 'Header Rotation' e 'Jitter' para simular comportamento humano (Bypass de WAF).
+    3. Realiza Parsing Fragmentado: Reconstrói o preço final unificando componentes DOM separados (parte inteira e fracionária) para garantir precisão decimal.
+    """
     MAX_TENTATIVAS = 3
     for tentativa in range(MAX_TENTATIVAS):
       try:
@@ -188,7 +243,7 @@ class Vigilante:
           if real and cents:
             texto_real = real.get_text().strip()
             texto_cents = cents.get_text().strip()
-
+            # Remove Virgulas que a Amazon costuma enviar
             if texto_real.endswith(','):
               texto_real = texto_real[:-1]
 
@@ -206,6 +261,14 @@ class Vigilante:
     return None
 
   async def processar_produto(self, semaforo, session, produto):
+     """
+     Atua como 'Dispatcher' tático, roteando a execução para a estratégia de coleta adequada.
+
+     Responsabilidades:
+     1. Controle de Concorrência: Adquire o semáforo global para limitar requisições simultâneas e evitar Rate Limiting.
+     2. Strategy Pattern: Seleciona dinamicamente o algoritmo de extração específico (Amazon/ML) com base na origem do produto.
+     3. Normalização (DTO): Consolida os dados brutos em um objeto estruturado padrão pronto para persistência.
+     """
      async with semaforo:
         preco = None
 
@@ -225,6 +288,15 @@ class Vigilante:
           }
 
   def rodar(self):
+    """
+    Ponto de entrada (Entrypoint) que executa o Pipeline ETL completo (Extração, Carga e Notificação).
+
+    Responsabilidades:
+    1. Orquestração: Inicializa o Event Loop do AsyncIO para disparar a coleta massiva.
+    2. Persistência: Recebe os dados brutos e chama o método de salvamento (Load) no Data Warehouse.
+    3. Motor de Regras: Compara Preço Coletado vs. Meta do Usuário e dispara alertas via Telegram (Push Notification).
+    4. Resiliência: Captura exceções globais para garantir que falhas não derrubem o container sem registro.
+    """
     print("👀 Iniciando ronda de preços...")
     self.registrar_log("INICIANDO", "Começando a Ronda...")
 
@@ -256,6 +328,14 @@ class Vigilante:
       self.registrar_log("ERRO", msg_erro)
 
   def registrar_log(self, status, detalhes):
+    """
+    Módulo de Telemetria e Observabilidade do sistema.
+
+    Responsabilidades:
+    1. Trilha de Auditoria: Persiste eventos críticos (Início, Sucesso, Erro Fatal) na tabela 'logs_execucao'.
+    2. Monitoramento Remoto: Alimenta os dados que permitem ao Dashboard saber se o agente está 'Online' ou 'Offline'.
+    3. Isolamento de Falha: Abre uma conexão dedicada para garantir que o log de erro seja salvo mesmo se a conexão principal cair.
+    """
     DATABASE_URL = os.getenv("DATABASE_URL")
     try:
       if DATABASE_URL:

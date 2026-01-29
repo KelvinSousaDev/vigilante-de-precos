@@ -1,101 +1,94 @@
-# 🦇 Vigilante de Preços v2.0 - Monitoramento Multi-Loja
+# 🦇 Vigilante de Preços: Engine de Monitoramento Híbrido (SaaS)
 
-[![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-api.onrender.com/docs)
-[![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Cloud-336791?style=for-the-badge&logo=postgresql)](https://render.com/)
+[![CI Status](https://github.com/KelvinSousaDev/vigilante-de-precos/actions/workflows/testes_automatizados.yml/badge.svg)](https://github.com/KelvinSousaDev/vigilante-de-precos/actions)
+[![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-dashboard.onrender.com)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-336791?style=for-the-badge&logo=postgresql)](https://neon.tech/)
 
-> **Status:** Produção (Híbrido) | 🛍️ Suporte: **Amazon Brasil** & **Mercado Livre**
-
-Sistema de Engenharia de Dados ponta-a-ponta para monitoramento competitivo de preços. O projeto utiliza técnicas avançadas de scraping para superar bloqueios de WAF (Web Application Firewalls), normaliza dados de diferentes estruturas HTML e persiste histórico em Data Warehouse na nuvem para análise de tendências.
-
-![Dashboard Vigilante v2]![alt text](image.png)
-_(Visualização em tempo real comparando variação de preços entre concorrentes)_
+> **Resumo:** Sistema autônomo de inteligência de preços que opera em arquitetura híbrida (Local + Nuvem) para superar bloqueios de WAF e garantir monitoramento 24/7.
 
 ---
 
-## 🏗️ Arquitetura do Sistema (ETL Híbrido)
+## 🎯 O Problema & A Solução
 
-O sistema opera em um modelo **On-Premises + Cloud**, garantindo resiliência contra bloqueios de IP de Data Centers e mantendo o Dashboard acessível publicamente.
+Grandes E-commerces (Amazon, Mercado Livre) utilizam precificação dinâmica e bloqueios agressivos contra bots. Um monitoramento simples na nuvem é bloqueado em minutos; um monitoramento local não tem persistência.
+
+**O Vigilante resolve isso com uma Arquitetura Híbrida:**
+
+1.  **Coleta Tática (Local):** Um agente Python roda em ambiente residencial para garantir IP limpo e simular um navegador real (Bypass de WAF).
+2.  **Inteligência (Nuvem):** Os dados são normalizados e enviados para um Data Warehouse (PostgreSQL) na nuvem.
+3.  **Visualização (SaaS):** Um Dashboard acessível via web consome os dados para análise de tendência e tomada de decisão.
+
+---
+
+## 🏗️ Arquitetura de Engenharia
+
+O projeto utiliza **Strategy Pattern** para lidar com diferentes estruturas HTML e **AsyncIO** para alta performance de coleta.
 
 ```mermaid
 graph LR
-    subgraph Coleta [Agente Local / Ingestão]
-    A[Robô Python] -->|Bypass WAF| B(Mercado Livre)
+    subgraph Edge [Ambiente Local / Coleta]
+    A[Agente Python Async] -->|TLS Fingerprint Spoofing| B(Mercado Livre)
     A -->|Headers Rotativos| C(Amazon Brasil)
     end
 
-    subgraph Cloud [Nuvem Render]
-    A -->|Persistência Segura| D[(PostgreSQL DW)]
-    D -->|Query SQL| E[Dashboard Streamlit]
+    subgraph Cloud [Nuvem Serverless]
+    A -->|Persistência Segura SSL| D[(PostgreSQL - NeonDB)]
+    D -->|Analytics| E[Dashboard Streamlit - Render]
     end
 ```
 
-## 🛡️ Desafios de Engenharia Superados
+## 🛡️ Diferenciais Técnicos (Por que não é "só um script"?)
 
-### 1. O Desafio Multi-Tenant (Polimorfismo)
+- **Bypass de WAF Avançado:** Utilização de curl_cffi para falsificar a assinatura JA3 (TLS Fingerprint), simulando um Chrome 120 legítimo. O Requests comum seria bloqueado instantaneamente.
 
-Cada loja (Amazon vs ML) possui estruturas HTML e proteções anti-bot completamente diferentes.
+- **Tratamento de Dados Robusto:** Pipeline ETL que normaliza moedas, remove sujeiras de formatação (ex: \n, \t) e trata erros de conexão com Exponential Backoff.
 
-- **Solução:** Implementação de uma arquitetura de extração modular (Strategy Pattern). O robô identifica a origem da URL e seleciona a estratégia de parsing adequada, normalizando dados não estruturados (como "R$ 1.200" vs "1200 + span 00") em um formato único no banco.
+- **Pipeline CI/CD:** Implementação de GitHub Actions rodando testes unitários (pytest) a cada commit. O Deploy no Render só ocorre se a bateria de testes passar (Quality Gate).
 
-### 2. O Bloqueio de WAF/IP
+- **Alta Disponibilidade:** O sistema roda de forma autônoma via agendamento, com tratamento de exceções e logs de execução em banco.
 
-Requisições de servidores cloud (AWS/Azure) são frequentemente bloqueadas por e-commerces.
+## 🧪 Stack Tecnológica
 
-- **Solução:** Uso da biblioteca `curl_cffi` para falsificar a assinatura TLS (JA3 Fingerprint), simulando um navegador Chrome 120 real, rodando em ambiente residencial para garantir IP confiável.
+- **Backend:** Python 3.12, AsyncIO, BeautifulSoup4.
 
-## 🔧 Tecnologias e Ferramentas
+- **Infraestrutura:** Docker (Dev), Render (Prod), Neon Tech (Serverless Postgres).
 
-- **Ingestão:** Python 3.12, `curl_cffi` (para simulação de TLS Fingerprint).
-- **Armazenamento:** PostgreSQL (Hospedado no Render.com).
-- **Visualização:** Streamlit (Consumindo dados históricos do banco).
-- **Automação:** Windows Task Scheduler (Execução agendada autônoma).
-- **Notificação:** Integração com API do Telegram.
+- **Qualidade:** Pytest (Testes Unitários), GitHub Actions (CI).
 
----
+- **Frontend:** Streamlit (Data App).
 
-## 🚀 Como Executar
+## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
 
 - Python 3.12+
-- PostgreSQL (Local ou Cloud)
+
+- Conta no Neon Tech (ou Postgres Local)
 
 ### Instalação
 
 ```bash
+# Clone o repositório
 git clone [https://github.com/KelvinSousaDev/vigilante-de-precos](https://github.com/KelvinSousaDev/vigilante-de-precos)
 cd vigilante-de-precos
+
+# Instale as dependências
 pip install -r requirements.txt
+
+# Configure o .env (use o .env.example como base)
+# Execute as migrações do banco
+python ExeDoBanco/setup_banco.py
 ```
 
-### Configuração (.env)
+## Rodando os Testes
 
-Crie um arquivo `.env` na raiz do projeto:
+Garanta que a lógica de limpeza de preços está íntegra:
 
-```env
-DATABASE_URL=postgres://usuario:senha@host-do-render/nome_do_banco
-TELEGRAM_TOKEN=seu_token
-TELEGRAM_CHAT_ID=seu_id
+```Bash
+python -m pytest
 ```
-
-### Execução
-
-Para iniciar o agente de coleta:
-
-```bash
-python vigilante.py
-```
-
-Para iniciar o dashboard visual:
-
-```bash
-streamlit run app.py
-```
-
----
 
 ## 👨‍💻 Autor
 
-Feito por **Kelvin Sousa** durante sua jornada para Engenharia de Dados.
-[LinkedIn](https://www.linkedin.com/in/okelvinsousa)
+**Kelvin Sousa** - Engenharia de Dados & Backend [LinkedIn](www.linkedin.com/in/okelvinsousa) | [Portfólio](https://github.com/KelvinSousaDev)
