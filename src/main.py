@@ -17,7 +17,9 @@ async def main():
       )
 
       tarefas = []
-      for nome, url in produtos:
+      for produto in produtos:
+          nome = produto['nome']
+          url = produto['url']
           tarefas.append(processar_produto(semaforo, context, nome, url))
       
       await asyncio.gather(*tarefas)

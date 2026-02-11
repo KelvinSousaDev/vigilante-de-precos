@@ -1,11 +1,16 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+    gcc
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt --no-cache-dir
-COPY . .
-EXPOSE 8501
-CMD ["streamlit", "run", "dashboard.py", "server.port=8501", "server.address=0.0.0.0"] 
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN playwright install chromium --with-deps
+COPY src/ .
+CMD ["python", "main.py"]
