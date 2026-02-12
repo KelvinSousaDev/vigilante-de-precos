@@ -1,7 +1,5 @@
 import asyncio
 
-
-
 async def coletar_amazon(semaforo, context, nome, url):
     print(f"🔄 Iniciando acesso ao: {nome}")
 
@@ -10,7 +8,7 @@ async def coletar_amazon(semaforo, context, nome, url):
       page = await context.new_page()
       
       try:
-          await page.goto(url)
+          await page.goto(url, wait_until="domcontentloaded")
           
           print(f"✅ Sucesso em {nome}")
 
