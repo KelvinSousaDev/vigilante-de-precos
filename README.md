@@ -1,92 +1,83 @@
-# 🦇 Vigilante de Preços: Engine de Monitoramento Híbrido (SaaS)
+# 🦇 Vigilante de Preços: Pipeline ETL Híbrido (SaaS)
 
 [![CI Status](https://github.com/KelvinSousaDev/vigilante-de-precos/actions/workflows/testes_automatizados.yml/badge.svg)](https://github.com/KelvinSousaDev/vigilante-de-precos/actions)
 [![Deploy on Render](https://img.shields.io/badge/Deploy-Online-success?style=for-the-badge&logo=render)](https://vigilante-api.onrender.com)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-336791?style=for-the-badge&logo=postgresql)](https://neon.tech/)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-2496ED?style=for-the-badge&logo=docker)](https://www.docker.com/)
 
-> **Resumo:** Sistema autônomo de inteligência de preços que opera em arquitetura híbrida (Local + Nuvem) para superar bloqueios de WAF e garantir monitoramento 24/7.
+> **Resumo:** Sistema autônomo de inteligência de preços e Engenharia de Dados. Opera em arquitetura híbrida para superar bloqueios de WAF, extraindo, transformando e carregando (ETL) dados em tempo real para tomada de decisão.
 
 ---
 
 ## 🎯 O Problema & A Solução
 
-Grandes E-commerces (Amazon, Mercado Livre) utilizam precificação dinâmica e bloqueios agressivos contra bots. Um monitoramento simples na nuvem é bloqueado em minutos; um monitoramento local não tem persistência.
+Grandes E-commerces (Amazon, Mercado Livre) utilizam precificação dinâmica e bloqueios agressivos contra bots. Um monitoramento simples via _requests_ na nuvem é bloqueado em minutos.
 
-**O Vigilante resolve isso com uma Arquitetura Híbrida:**
+**O Vigilante resolve isso com uma Arquitetura Híbrida e Distribuída:**
 
-1.  **Coleta Tática (Local):** Um agente Python roda em ambiente residencial para garantir IP limpo e simular um navegador real (Bypass de WAF).
-2.  **Inteligência (Nuvem):** Os dados são normalizados e enviados para um Data Warehouse (PostgreSQL) na nuvem.
-3.  **Visualização (SaaS):** Um Dashboard acessível via web consome os dados para análise de tendência e tomada de decisão.
+1.  **Extração Stealth (Edge):** Um agente Python/Playwright roda em ambiente conteinerizado isolado, simulando um navegador real (Bypass de WAF).
+2.  **Transformação & Carga (Nuvem):** Os dados são limpos e enviados para um Data Warehouse (PostgreSQL) na nuvem utilizando pools de conexão de alta performance.
+3.  **Visualização (SaaS):** Um Dashboard acessível via web consome os dados para análise de tendência.
 
 ---
 
-## 🏗️ Arquitetura de Engenharia
-
-O projeto utiliza **Strategy Pattern** para lidar com diferentes estruturas HTML e **AsyncIO** para alta performance de coleta.
+## 🏗️ Arquitetura de Engenharia (ETL)
 
 ```mermaid
 graph LR
-    subgraph Edge [Ambiente Local / Coleta]
-    A[Agente Python Async] -->|TLS Fingerprint Spoofing| B(Mercado Livre)
-    A -->|Headers Rotativos| C(Amazon Brasil)
+    subgraph Extract & Transform [Docker / Ambiente Isolado]
+    A[Agente AsyncIO] -->|Headless Browser| B(Mercado Livre - Playwright)
+    A -->|Stealth Mode| C(Amazon Brasil - Playwright)
     end
 
-    subgraph Cloud [Nuvem Serverless]
-    A -->|Persistência Segura SSL| D[(PostgreSQL - NeonDB)]
+    subgraph Load [Nuvem Serverless]
+    A -->|Connection Pooling & Transações| D[(Data Warehouse - NeonDB)]
     D -->|Analytics| E[Dashboard Streamlit - Render]
     end
 ```
 
 ## 🛡️ Diferenciais Técnicos (Por que não é "só um script"?)
 
-- **Bypass de WAF Avançado:** Utilização de curl_cffi para falsificar a assinatura JA3 (TLS Fingerprint), simulando um Chrome 120 legítimo. O Requests comum seria bloqueado instantaneamente.
+- Bypass de WAF Avançado: Substituição de requests estáticos pelo ecossistema Playwright operando de forma assíncrona com Semaphore para controle estrito de concorrência.
 
-- **Tratamento de Dados Robusto:** Pipeline ETL que normaliza moedas, remove sujeiras de formatação (ex: \n, \t) e trata erros de conexão com Exponential Backoff.
+- Engenharia de Banco de Dados: Uso da biblioteca asyncpg para implementar Connection Pooling. Elimina o overhead de TCP Handshakes repetitivos e utiliza Transações Atômicas para garantir integridade referencial entre as Tabelas Fato e Dimensão.
 
-- **Pipeline CI/CD:** Implementação de GitHub Actions rodando testes unitários (pytest) a cada commit. O Deploy no Render só ocorre se a bateria de testes passar (Quality Gate).
+- Infraestrutura Imutável: Empacotamento via Docker Multi-Stage Build, isolando as dependências pesadas no builder e entregando uma imagem final ultraleve e segura para execução.
 
-- **Alta Disponibilidade:** O sistema roda de forma autônoma via agendamento, com tratamento de exceções e logs de execução em banco.
+- Pipeline CI/CD: GitHub Actions rodando testes unitários a cada commit (Quality Gate) antes do Deploy contínuo.
 
 ## 🧪 Stack Tecnológica
 
-- **Backend:** Python 3.12, AsyncIO, BeautifulSoup4.
+- Backend / ETL: Python 3.12, AsyncIO, Playwright.
 
-- **Infraestrutura:** Docker (Dev), Render (Prod), Neon Tech (Serverless Postgres).
+- Banco de Dados: PostgreSQL (Neon Tech), asyncpg.
 
-- **Qualidade:** Pytest (Testes Unitários), GitHub Actions (CI).
+- Infraestrutura: Docker, Render, GitHub Actions (CI/CD).
 
-- **Frontend:** Streamlit (Data App).
+- Frontend: Streamlit (Data App).
 
 ## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
 
-- Python 3.12+
+- Docker e Docker Compose instalados.
 
-- Conta no Neon Tech (ou Postgres Local)
+- Conta no Neon Tech (ou Postgres Local).
 
-### Instalação
+### Instalação via Docker (Recomendado)
 
 ```bash
 # Clone o repositório
 git clone [https://github.com/KelvinSousaDev/vigilante-de-precos](https://github.com/KelvinSousaDev/vigilante-de-precos)
 cd vigilante-de-precos
 
-# Instale as dependências
-pip install -r requirements.txt
-
 # Configure o .env (use o .env.example como base)
-# Execute as migrações do banco
-python ExeDoBanco/setup_banco.py
-```
+# Construa a imagem blindada
+docker build -t vigilante-etl .
 
-## Rodando os Testes
-
-Garanta que a lógica de limpeza de preços está íntegra:
-
-```Bash
-python -m pytest
+# Execute injetando as variáveis em tempo de execução
+docker run --rm --env-file .env vigilante-etl
 ```
 
 ## 👨‍💻 Autor

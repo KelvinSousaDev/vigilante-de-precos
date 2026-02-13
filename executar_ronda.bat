@@ -1,4 +1,4 @@
 @echo off
-cd /d "C:\Users\Kelvin\Desktop\Python\VigilantePrecos"
+cd /d "C:\Users\Kelvin\Desktop\Python\VigilantePrecos\src"
 call venv\Scripts\activate
-python vigilante.py
+python main.py

@@ -1,5 +1,18 @@
+# Ambientes Virtuais
 venv/
+env/
+.venv/
+
+# Variáveis de Ambiente e Segredos
 .env
-__pycache__
-*.db
-/testes
+
+# Caches do Python e Playwright
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# Arquivo fase beta (Apenas para visualizar a mudança de um pro outro)
+vigilante.py
