@@ -3,6 +3,8 @@ from extract.amazon_scraper import coletar_amazon
 from extract.ml_scraper import coletar_ml
 from transform.parsers import limpar_preco
 from load.postgres import conectar_banco, carregar_produtos, desconectar_banco, salvar_no_banco
+from notify.alert import notify_discord
+from notify.msg_generate import create_msg
 from playwright.async_api import async_playwright
 
 async def main():
@@ -23,7 +25,8 @@ async def main():
         for produto in produtos:
             nome = produto['nome']
             url = produto['url']
-            tarefas.append(processar_produto(semaforo, context, nome, url))
+            meta = produto['meta_preco']
+            tarefas.append(processar_produto(semaforo, context, nome, url, meta))
         
         await asyncio.gather(*tarefas)
   except Exception as e:
@@ -32,7 +35,7 @@ async def main():
     await desconectar_banco()
     print("🦇 Vigilante encerrado.")
 
-async def processar_produto(semaforo, context, nome, url):
+async def processar_produto(semaforo, context, nome, url, meta):
    preco_sujo = None
    loja_detectada = "Desconhecida"
 
@@ -46,7 +49,11 @@ async def processar_produto(semaforo, context, nome, url):
    if preco_sujo:
       preco_limpo = limpar_preco(preco_sujo)
       print(f"💰 {nome}: {preco_limpo}")
-
+      
+      if preco_limpo <= meta:
+          msg = create_msg(nome, url, preco_limpo, loja_detectada, meta)
+          notify_discord(msg)
+          
       await salvar_no_banco(nome, url, preco_limpo, loja_detectada)
       
    else:

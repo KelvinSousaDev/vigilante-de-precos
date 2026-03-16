@@ -1,4 +1,3 @@
 @echo off
-cd /d "C:\Users\Kelvin\Desktop\Python\VigilantePrecos\src"
-call venv\Scripts\activate
-python main.py
+cd "C:\Users\Kelvin\Desktop\Python\VigilantePrecos"
+docker run --rm --env-file .env vigilante-v4
