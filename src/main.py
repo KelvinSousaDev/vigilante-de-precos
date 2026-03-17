@@ -2,7 +2,7 @@ import asyncio
 from extract.amazon_scraper import coletar_amazon
 from extract.ml_scraper import coletar_ml
 from transform.parsers import limpar_preco
-from load.postgres import conectar_banco, carregar_produtos, desconectar_banco, salvar_no_banco
+from load.postgres import conectar_banco, carregar_produtos, desconectar_banco, salvar_no_banco, registrar_log
 from notify.alert import notify_discord
 from notify.msg_generate import create_msg
 from playwright.async_api import async_playwright
@@ -11,6 +11,7 @@ async def main():
   await conectar_banco()
   try:
     print("🦇 Vigilante iniciado...")
+    await registrar_log("INICIANDO", "Começando a Ronda...")
     
     produtos = await carregar_produtos()
     semaforo = asyncio.Semaphore(3)
@@ -30,7 +31,9 @@ async def main():
         
         await asyncio.gather(*tarefas)
   except Exception as e:
-        print(f"❌ Erro fatal no main: {e}")
+        msg_erro = f"Erro Fatal: {str(e)}"
+        print(f"❌ Erro fatal no main: {msg_erro}")
+        await registrar_log("ERRO", msg_erro)
   finally:
     await desconectar_banco()
     print("🦇 Vigilante encerrado.")

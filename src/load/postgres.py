@@ -89,6 +89,16 @@ async def salvar_no_banco(nome, url, preco, loja):
     except Exception as e:
         print(f"❌ Erro ao salvar no Banco: {e}")
 
+async def registrar_log(status, detalhes):
+    global pool_conexao
+
+    async with pool_conexao.acquire() as conn:
+        query_registrar_log = """
+            INSERT INTO logs_execucao (status, detalhes) 
+            VALUES ($1, $2) """
+        await conn.execute(query_registrar_log, status, detalhes)
+        print(f"Log Registrada com sucesso")
+    
 
 # Bloco de teste Seguro
 if __name__ == "__main__":
