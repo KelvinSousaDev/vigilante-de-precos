@@ -16,3 +16,7 @@ __pycache__/
 
 # Arquivo fase beta (Apenas para visualizar a mudança de um pro outro)
 vigilante.py
+
+# Arquivos Airflow
+logs/
+config/

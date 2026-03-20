@@ -1,6 +1,5 @@
 import time
 from bs4 import BeautifulSoup
-from notificador import enviar_telegram
 import os
 import psycopg2
 import asyncio
@@ -320,7 +319,6 @@ class Vigilante:
               f"🏪 *Loja:* {item['loja']}\n\n"
               f"🔗 [Comprar Agora]({item['url']})"
               )
-            enviar_telegram(msg)
 
     except Exception as e:
       msg_erro = f"Erro Fatal: {str(e)}"

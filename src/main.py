@@ -62,6 +62,5 @@ async def processar_produto(semaforo, context, nome, url, meta):
    else:
       print(f"⚠️ Falha ao extrair preço de: {nome} (URL: {url})")
 
-
 if __name__ == "__main__":
     asyncio.run(main())
